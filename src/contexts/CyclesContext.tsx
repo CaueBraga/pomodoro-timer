@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useState } from 'react'
+import { createContext, ReactNode, useState, useReducer } from 'react'
 
 interface CreateCycleData {
   task: string
@@ -30,26 +30,73 @@ interface CyclesContextProviderProps {
   children: ReactNode
 }
 
+interface CyclesState {
+  cycles: Cycle[]
+  activeCycleId: string | null
+}
+
 export function CyclesContextProvider({
   children,
 }: CyclesContextProviderProps) {
-  const [cycles, setCycles] = useState<Cycle[]>([])
-  const [activeCycleId, setActiveCycleId] = useState<string | null>(null)
+  const [cyclesState, dispatch] = useReducer(
+    (state: CyclesState, action: any) => {
+      switch (action.type) {
+        case 'ADD_NEW_CYCLE':
+          return {
+            ...state,
+            cycles: [...state.cycles, action.payload.newCycle],
+            activeCycleId: action.payload.newCycle.id,
+          }
+        case 'INTERRUPT_CURRENT_CYCLE':
+          return {
+            ...state,
+            cycles: state.cycles.map((cycle) => {
+              if (cycle.id === state.activeCycleId) {
+                return { ...cycle, interruptedDate: new Date() }
+              } else {
+                return cycle
+              }
+              // eslint-disable-next-line prettier/prettier
+            }),
+            activeCycleId: null,
+          }
+
+        case 'MARK_CURRENT_CYCLE_AS_FINISHED':
+          return {
+            ...state,
+            cycles: state.cycles.map((cycle) => {
+              if (cycle.id === state.activeCycleId) {
+                return { ...cycle, finishededDate: new Date() }
+              } else {
+                return cycle
+              }
+              // eslint-disable-next-line prettier/prettier
+            }),
+            activeCycleId: null,
+          }
+        default:
+          return state
+      }
+    },
+    {
+      cycles: [],
+      activeCycleId: null,
+      // eslint-disable-next-line prettier/prettier
+    }
+  )
+
   const [amountSecondPassed, setAmountSecondPassed] = useState(0)
 
+  const { cycles, activeCycleId } = cyclesState
   const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId)
 
   function markCurrentCycleAsFinished() {
-    setCycles((state) =>
-      state.map((cycle) => {
-        if (cycle.id === activeCycleId) {
-          return { ...cycle, finishededDate: new Date() }
-        } else {
-          return cycle
-        }
-        // eslint-disable-next-line prettier/prettier
-      })
-    )
+    dispatch({
+      type: 'MARK_CURRENT_CYCLE_AS_FINISH',
+      payload: {
+        activeCycleId,
+      },
+    })
   }
   function setSecondsPassed(seconds: number) {
     setAmountSecondPassed(seconds)
@@ -64,24 +111,22 @@ export function CyclesContextProvider({
       startDate: new Date(),
     }
 
-    setCycles((state) => [...state, newCycle])
-
-    setActiveCycleId(id)
+    dispatch({
+      type: 'ADD_NEW_CYCLE',
+      payload: {
+        newCycle,
+      },
+    })
     setAmountSecondPassed(0)
   }
 
   function interruptCurrentCycle() {
-    setCycles((state) =>
-      state.map((cycle) => {
-        if (cycle.id === activeCycleId) {
-          return { ...cycle, interruptedDate: new Date() }
-        } else {
-          return cycle
-        }
-        // eslint-disable-next-line prettier/prettier
-      })
-    )
-    setActiveCycleId(null)
+    dispatch({
+      type: 'INTERRUPT_CURRENT_CYCLE',
+      payload: {
+        activeCycleId,
+      },
+    })
   }
 
   return (
