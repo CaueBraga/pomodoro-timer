@@ -23,7 +23,7 @@ export function CountDown() {
         const secondsDifference = differenceInSeconds(
           new Date(),
           // eslint-disable-next-line prettier/prettier
-          activeCycle.startDate
+          new Date(activeCycle.startDate)
         )
 
         if (secondsDifference >= totalSeconds) {
